@@ -1,0 +1,45 @@
+import Image from "next/image"
+import { Download, Filter, Plus, ShieldCheck, Sparkles } from "lucide-react"
+import { Sidebar } from "@/components/dashboard/sidebar"
+import { Topbar } from "@/components/dashboard/topbar"
+import { findings, downloadText } from "@/lib/api"
+
+const reports = [
+  ["incident-report-q3.pdf", "Oct 12, 2026", "Wazuh", "Tines", "12", "HIGH", "Needs review"],
+  ["phishing-investigation.docx", "Oct 11, 2026", "Splunk", "Shuffle", "8", "MEDIUM", "Completed"],
+  ["endpoint-triage.md", "Oct 09, 2026", "Elastic", "n8n", "4", "HIGH", "Processing"],
+  ["cloud-audit-export.json", "Oct 07, 2026", "Sentinel", "Tines", "0", "—", "Failed"],
+]
+const logs = [["10:42", "Champ", "Reviewed", "incident-report-q3.pdf", "v1.4", "Success"], ["09:18", "Ava Chen", "Deployed", "PowerShell cradle", "v1.3", "Success"], ["Yesterday", "Champ", "Edited", "Privileged login burst", "v1.2", "Success"], ["Oct 10", "Ava Chen", "Rolled back", "Cloud audit rules", "v1.1", "Reverted"]]
+const iocs = [["185.220.101.4", "IP address", "attacker", "incident-report-q3.pdf", "Oct 12, 2026"], ["update-check[.]com", "Domain", "infrastructure", "phishing-investigation.docx", "Oct 11, 2026"], ["powershell.exe", "File name", "benign", "endpoint-triage.md", "Oct 09, 2026"], ["a91f…c44e", "SHA256", "attacker", "incident-report-q3.pdf", "Oct 12, 2026"]]
+const rules = [["Suspicious PowerShell download cradle", "Sigma", "T1059.001", "HIGH", "v1.4", "Ready"], ["Unusual privileged login burst", "SIEM", "T1078", "MEDIUM", "v1.2", "Ready"], ["Office child process anomaly", "YARA", "T1204", "HIGH", "v1.1", "Draft"]]
+const playbooks = [["PowerShell containment", "Tines", "5", "Active"], ["Privileged login investigation", "Shuffle", "4", "Draft"], ["Phishing triage and enrichment", "n8n", "7", "Active"]]
+const deployments = [["Oct 12, 10:42", "Splunk", "PowerShell cradle", "v1.4", "Deployed"], ["Oct 11, 15:20", "Tines", "PowerShell containment", "v1.3", "Validated"], ["Oct 10, 09:10", "Elastic", "Cloud audit rules", "v1.1", "Rolled back"]]
+
+const titles: Record<string, string> = { overview: "Overview", "audit-logs": "Audit Logs", "threat-intelligence": "Threat Intelligence", "detection-rules": "Detection Rules", "mitre-attack": "MITRE ATT&CK", "soar-automations": "SOAR Automations", deployments: "Deployments", settings: "Settings" }
+const descriptions: Record<string, string> = { overview: "A live view of your security operations center.", "audit-logs": "Review every action taken across your generated response assets.", "threat-intelligence": "Track indicators and context extracted from analyzed reports.", "detection-rules": "Manage detections generated from your security intelligence.", "mitre-attack": "Explore coverage across adversary tactics and techniques.", "soar-automations": "Build and validate response playbooks for your connected tools.", deployments: "Monitor the rules and playbooks deployed to your environment.", settings: "Configure integrations, notifications, and workspace preferences." }
+
+function Badge({ children }: { children: string }) {
+  const danger = /HIGH|Failed|Risky|Rolled/.test(children)
+  const success = /Ready|Active|Completed|Success|Deployed|Validated/.test(children)
+  return <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${danger ? "border-red-400/20 bg-red-500/10 text-red-300" : success ? "border-emerald-400/20 bg-emerald-500/10 text-emerald-300" : "border-[#8e83ff]/20 bg-[#8e83ff]/10 text-[#c3bdff]"}`}>{children}</span>
+}
+
+function Table({ headers, rows, href }: { headers: string[]; rows: string[][]; href?: string }) {
+  return <div className="overflow-x-auto rounded-2xl border border-white/10 bg-[#0a0d1c]/85 shadow-[0_18px_70px_rgba(0,0,0,0.2)]"><table className="w-full min-w-[760px] text-left text-sm"><thead><tr className="border-b border-white/10 bg-white/[0.025] text-[10px] uppercase tracking-[0.22em] text-white/45">{headers.map(h => <th key={h} className="px-5 py-4 font-medium">{h}</th>)}</tr></thead><tbody>{rows.map((row, i) => <tr key={i} className="border-b border-white/5 last:border-0 transition-colors hover:bg-[#8e83ff]/[0.06]">{row.map((cell, j) => <td key={j} className="px-5 py-4 text-white/75">{(j === row.length - 1 || /HIGH|MEDIUM|Failed|Deployed|Validated|Rolled back|Success|Reverted|Ready|Active|Draft|Completed/.test(cell)) ? <Badge>{cell}</Badge> : href && i === 0 ? <a className="font-medium text-white transition-colors hover:text-[#b9b1ff]" href={href}>{cell}</a> : cell}</td>)}</tr>)}</tbody></table></div>
+}
+
+function SectionHeader({ title, description, action }: { title: string; description: string; action?: string }) {
+  return <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><p className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.3em] text-[#a7a0ff]"><Sparkles className="size-3.5" aria-hidden="true" /> ThreatBridge SOC</p><h1 className="text-[clamp(30px,5vw,48px)] font-bold leading-none tracking-tight text-white">{title}</h1><p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-white/55">{description}</p></div>{action && <button type="button" className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#776dff] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_8px_28px_rgba(119,109,255,0.28)] transition hover:bg-[#8e83ff]"><Plus className="size-4" aria-hidden="true" />{action}</button>}</div>
+}
+
+export function DataPage({ section }: { section: string }) {
+  const title = titles[section] ?? "Overview"
+  const content = section === "overview" ? <><div className="grid grid-cols-2 gap-4 xl:grid-cols-4">{[["Reports analyzed", "24", "+18%"], ["Open findings", "16", "4 high"], ["Rules generated", "48", "+12%"], ["Deployments", "31", "98% success"]].map(([label, value, trend]) => <div key={label} className="rounded-2xl border border-white/10 bg-[#0a0d1c]/85 p-5 shadow-[0_18px_60px_rgba(0,0,0,0.18)]"><p className="text-sm text-white/50">{label}</p><p className="mt-3 text-4xl font-bold tracking-tight">{value}</p><p className="mt-2 text-xs font-medium text-[#a7a0ff]">{trend}</p></div>)}</div><div><h2 className="mb-4 text-lg font-semibold">Recent reports</h2><Table headers={["File name", "Uploaded on", "SIEM", "SOAR", "Findings", "Highest severity", "Status"]} rows={reports} href="/review" /></div></> : section === "audit-logs" ? <><Toolbar /><Table headers={["Time", "User", "Action", "Target", "Rule version", "Result"]} rows={logs} /></> : section === "threat-intelligence" ? <Table headers={["Value", "Type", "Role", "Source report", "First seen"]} rows={iocs} /> : section === "detection-rules" ? <><Toolbar action="New rule" /><Table headers={["Title", "Type", "ATT&CK ID", "Severity", "Version", "Status"]} rows={rules} /></> : section === "soar-automations" ? <><Toolbar action="New playbook" /><Table headers={["Name", "Platform", "Steps", "Status"]} rows={playbooks} /></> : section === "deployments" ? <Table headers={["Deployed on", "Platform", "Asset", "Version", "Status"]} rows={deployments} /> : <div className="rounded-2xl border border-white/10 bg-[#0a0d1c]/85 p-8 text-white/70">Workspace settings and connected integrations are ready to configure.</div>
+  return <div className="flex h-dvh overflow-hidden bg-[#05070f] font-sans text-white"><Sidebar /><div className="relative flex min-w-0 flex-1 flex-col"><Image src="/images/bottom-wave.png" alt="" fill sizes="100vw" className="pointer-events-none object-cover object-bottom opacity-35" /><Topbar /><main className="relative flex-1 overflow-y-auto px-6 pb-12 pt-[clamp(24px,5vh,48px)] lg:px-12"><SectionHeader title={title} description={descriptions[section] ?? descriptions.overview} action={section === "overview" ? undefined : undefined} /><div className="mt-10 flex flex-col gap-7">{content}</div></main></div></div>
+}
+
+function Toolbar({ action }: { action?: string }) { return <div className="flex flex-wrap items-center justify-between gap-3"><div className="flex flex-wrap gap-3"><button type="button" className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-[#0a0d1c] px-4 py-2.5 text-sm text-white/75 hover:border-[#8e83ff]/40"><Filter className="size-4" aria-hidden="true" /> All activity</button><button type="button" className="rounded-xl border border-white/10 bg-[#0a0d1c] px-4 py-2.5 text-sm text-white/75 hover:border-[#8e83ff]/40">Last 30 days</button></div>{action && <button type="button" className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2.5 text-sm text-white/75 hover:bg-white/10"><Plus className="size-4" aria-hidden="true" />{action}</button>}</div> }
+
+export function DownloadButton({ text, name }: { text: string; name: string }) { return <button onClick={() => downloadText(name, text)} className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-xs text-white/75 hover:bg-white/10"><Download className="size-3.5" aria-hidden="true" /> Download</button> }
+export { findings }
